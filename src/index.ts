@@ -48,6 +48,7 @@ import { ContextBuilder, createContextBuilder } from './context';
 import { Mutex, FileLock } from './utils';
 import { FileWatcher, WatchOptions, PendingFile, LockUnavailableError } from './sync';
 import { EXTRACTION_VERSION } from './extraction/extraction-version';
+import { linkMoaAcrossWorkspace } from './workspace/moa-linker';
 import { getCodeGraphDir } from './directory';
 import { deriveProjectNameTokens } from './search/query-utils';
 import { CodeGraphPackageVersion } from './mcp/version';
@@ -121,6 +122,12 @@ export interface IndexOptions {
 
   /** Enable verbose logging (worker lifecycle, memory, timeouts) */
   verbose?: boolean;
+
+  /**
+   * Skip workspace MOA cross-repo linking (used when syncing sibling repos
+   * to avoid recursive fan-out).
+   */
+  skipWorkspaceMoaLink?: boolean;
 }
 
 /**
@@ -431,6 +438,10 @@ export class CodeGraph {
           this.resolver.resolveDeferredThisMemberRefs();
         }
 
+        if (result.success && result.filesIndexed > 0) {
+          await this.runMoaWorkspaceLink(options);
+        }
+
         // Refresh planner stats + checkpoint the WAL after bulk writes.
         // Cheap and non-blocking; never load-bearing for correctness.
         if (result.success && result.filesIndexed > 0) {
@@ -555,6 +566,13 @@ export class CodeGraph {
           this.resolver.resolveDeferredThisMemberRefs();
         }
 
+        if (
+          !options.skipWorkspaceMoaLink &&
+          (result.filesAdded > 0 || result.filesModified > 0 || result.filesRemoved > 0)
+        ) {
+          await this.runMoaWorkspaceLink(options);
+        }
+
         // Refresh planner stats + checkpoint the WAL after bulk writes.
         if (result.filesAdded > 0 || result.filesModified > 0 || result.filesRemoved > 0) {
           this.db.runMaintenance();
@@ -565,6 +583,23 @@ export class CodeGraph {
         this.fileLock.release();
       }
     });
+  }
+
+  /**
+   * MOA cross-repo linking after resolution (workspace-aware).
+   */
+  private async runMoaWorkspaceLink(options: IndexOptions): Promise<void> {
+    if (options.skipWorkspaceMoaLink) return;
+    try {
+      this.resolver.warmCaches();
+      await linkMoaAcrossWorkspace({
+        projectRoot: this.projectRoot,
+        queries: this.queries,
+        context: this.resolver.getResolutionContext(),
+      });
+    } catch {
+      // MOA linking is additive; never fail sync/index over it
+    }
   }
 
   /**

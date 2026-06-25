@@ -1563,6 +1563,29 @@ export class ToolHandler {
         registeredAt,
       };
     }
+    if (m?.synthesizedBy === 'moa-consumer') {
+      const uri = m.serviceUri ? `\`${String(m.serviceUri)}\`` : 'MOA service';
+      const cross = m.crossRepo
+        ? ` [cross-repo: ${String(m.sourceModule)} → ${String(m.targetModule)}]`
+        : '';
+      return {
+        label: `MOA consumer RPC → ${uri}${cross}`,
+        compact: `moa: consumer ${uri}${cross}${at}`,
+        registeredAt,
+      };
+    }
+    if (m?.synthesizedBy === 'moa-goback') {
+      const uri = m.serviceUri ? `\`${String(m.serviceUri)}\`` : 'MOA service';
+      const meth = m.method ? `#${String(m.method)}` : '';
+      const cross = m.crossRepo
+        ? ` [cross-repo: ${String(m.sourceModule)} → ${String(m.targetModule)}]`
+        : '';
+      return {
+        label: `MOA goback callback → ${uri}${meth}${cross}`,
+        compact: `moa: goback ${uri}${meth}${cross}${at}`,
+        registeredAt,
+      };
+    }
     // Generic fallback for any other synthesizer (redux-thunk, gin-middleware-chain,
     // flutter-build, …): a synthesized hop must never read as a bare static `calls`.
     // It's a dynamic-dispatch bridge — label it as one and keep its wiring site.

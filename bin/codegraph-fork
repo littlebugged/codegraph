@@ -1,0 +1,9 @@
+#!/bin/sh
+# Fork launcher: uses the bundled Node from official codegraph install
+# to avoid Node 25 WASM issues, and points to our fork's dist.
+FORK_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+NODE="/Users/zhoudongxu/.codegraph/versions/v0.9.9/node"
+if [ ! -x "$NODE" ]; then
+  NODE="node"
+fi
+exec "$NODE" --liftoff-only "$FORK_DIR/dist/bin/codegraph.js" "$@"

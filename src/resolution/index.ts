@@ -257,6 +257,11 @@ export class ReferenceResolver {
     this.context = this.createContext();
   }
 
+  /** Resolution context for post-pass synthesizers (MOA workspace linker, etc.) */
+  getResolutionContext(): ResolutionContext {
+    return this.context;
+  }
+
   /**
    * Initialize the resolver (detect frameworks, etc.)
    */

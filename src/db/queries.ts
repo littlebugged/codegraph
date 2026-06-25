@@ -1298,6 +1298,21 @@ export class QueryBuilder {
   }
 
   /**
+   * Remove MOA heuristic edges before re-synthesis on sync.
+   */
+  deleteMoaSynthesizedEdges(): number {
+    const result = this.db.prepare(`
+      DELETE FROM edges
+      WHERE provenance = 'heuristic'
+        AND (
+          metadata LIKE '%"synthesizedBy":"moa-consumer"%'
+          OR metadata LIKE '%"synthesizedBy":"moa-goback"%'
+        )
+    `).run();
+    return result.changes;
+  }
+
+  /**
    * Delete all edges from a source node
    */
   deleteEdgesBySource(sourceId: string): void {
